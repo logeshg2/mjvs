@@ -1,5 +1,6 @@
 #!/home/logesh/mujoco_ws/mujoco_env/bin/python3
 
+import cv2
 import mujoco
 import numpy as np
 import mujoco.viewer
@@ -10,6 +11,9 @@ integration_dt = 0.1
 def main():
     model = mujoco.MjModel.from_xml_path("kuka_iiwa_14/scene.xml")
     data = mujoco.MjData(model)
+
+    renderer = mujoco.Renderer(model, height=480, width=640)
+    rs_rgbCam = model.camera("camera_rgb").id
 
     # model.opt.gravity = (0,0,0)
     # print(model.opt.gravity)
@@ -48,11 +52,12 @@ def main():
             
             # joint vel + ee vel control
             targetVel = np.zeros((6))
-            targetVel[0] = 0.05
+            targetVel[0] = 0.1
             # Get the Jacobian with respect to the end-effector site.
             mujoco.mj_jacSite(model, data, robotJacob[:3], robotJacob[3:], site_id)
             dq = np.linalg.pinv(robotJacob) @ targetVel
             data.qvel = dq
+
             # Integrate joint velocities to obtain joint positions.     # this did not work
             # q = data.qpos.copy()
             # mujoco.mj_integratePos(model, q, dq, integration_dt)
@@ -62,6 +67,12 @@ def main():
             """
             tarPosi
             """
+
+            renderer.update_scene(data, camera=rs_rgbCam)
+            rgb = renderer.render()
+            bgr = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+            cv2.imshow("rgb camera", bgr)
+            cv2.waitKey(1)
             
             mujoco.mj_rne(model, data, 0, data.qfrc_inverse)
 
