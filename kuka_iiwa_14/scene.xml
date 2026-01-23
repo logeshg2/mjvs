@@ -28,7 +28,7 @@
       <site type="sphere" size="0.01" rgba="0 0 1 1" group="1"/>
     </body> -->
 
-    <geom type="box" size=".1 .1 0.001" pos="0.5 0 0.1" material="mataruco" euler="0 0 0" rgba="1 1 1 1" mass="10"/>
+    <geom name="aruco" type="box" size=".1 .1 0.001" pos="0.5 0 0.1" material="mataruco" euler="0 0 0" rgba="1 1 1 1" mass="10"/>
 
   </worldbody>
 </mujoco>
