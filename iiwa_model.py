@@ -144,9 +144,9 @@ def main():
             bTo[2, 3] = 0.5
 
             # hard coding target position
-            bTo[0:3, 3] = data.geom_xpos[aruco_id]
-            bTo[0:3, 0:3] = np.reshape(data.geom_xmat[aruco_id], (3,3))
-            bTo[2, 3] = 0.5
+            # bTo[0:3, 3] = data.geom_xpos[aruco_id]
+            # bTo[0:3, 0:3] = np.reshape(data.geom_xmat[aruco_id], (3,3))
+            # bTo[2, 3] = 0.5
             
             # Position error.
             error_pos[:] = bTo[0:3, 3] - bTc[0:3, 3]
