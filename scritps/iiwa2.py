@@ -44,6 +44,10 @@ data = mujoco.MjData(model)
 renderer = mujoco.Renderer(model, height=480, width=640)
 rs_rgbCam = model.camera("camera_rgb").id
 
+damping: float = 1e-4
+jac = np.zeros((6, model.nv))
+diag = damping * np.eye(6)
+
 with mujoco.viewer.launch_passive(model, data, show_left_ui=False, show_right_ui=False) as viewer:
     # Reset the free camera.
     mujoco.mjv_defaultFreeCamera(model, viewer.cam)
@@ -54,15 +58,24 @@ with mujoco.viewer.launch_passive(model, data, show_left_ui=False, show_right_ui
     viewer.opt.frame = mujoco.mjtFrame.mjFRAME_CAMERA
 
     while viewer.is_running():
+        
+        mujoco.mj_jacSite(model, data, jac[:3], jac[3:], model.site('attachment_site').id)
+        tar_ee_vel = np.array([0.01, 0.0, 0.0, 0.0, 0.0, 0.0])
+        dq = jac.T @ np.linalg.solve(jac @ jac.T + diag, tar_ee_vel)
+        
+        q = data.qpos.copy()
+        mujoco.mj_integratePos(model, q, dq, 1)
 
-        data.ctrl[:] = q_home
+        data.ctrl[:] = q
 
+        """
         renderer.update_scene(data, camera=rs_rgbCam)
         rgb = renderer.render()
         bgr = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
         cv2.imshow("", bgr)
         cv2.waitKey(1)
-
+        """
+        
         # q = data.qpos.copy()
         # mujoco.mj_integratePos(model, q, tar_vel, 1)
 

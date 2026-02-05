@@ -73,18 +73,18 @@ class IBVS_MJ:
             [self.markerLength / 2, self.markerLength / 2, 0],
             [-self.markerLength / 2, self.markerLength / 2, 0]
         ])
-        self.tar_top_left = np.array([243, 473])
-        self.tar_top_right = np.array([247, 316])
-        self.tar_bottom_right = np.array([395, 316])
-        self.tar_bottom_left = np.array([400, 473])
-        self.tar_Z = 0.38099
+        self.tar_top_left = np.array([234, 319])
+        self.tar_top_right = np.array([232, 143])
+        self.tar_bottom_right = np.array([408, 142])
+        self.tar_bottom_left = np.array([409, 317])
+        self.tar_Z = 0.330
         self.curCorners = None
         self.arucoPose = None
         self.aruco_corner_depth = np.array([-1.0, -1.0, -1.0, -1.0])
     
         # visual servoing parameters
         self.curCamVel = None
-        self.lambdaVar = 0.3
+        self.lambdaVar = 2.0
         self.ee_vel = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
         # adjoint transformation (camera frame velocity to end-effector frame velocity transform)
         self.ADeTc = np.zeros((6, 6))
@@ -135,6 +135,7 @@ class IBVS_MJ:
                 cTa = np.eye(4)
                 cTa[0:3, 3] = tvec.flatten()
                 cTa[0:3, 0:3] = rotm
+                self.arucoPose = cTa 
 
                 # draw the pose frame on aruco
                 cv2.drawFrameAxes(self.latestImg, self.K, self.camDist, rvec, tvec, 0.1, 2)
@@ -260,7 +261,7 @@ class IBVS_MJ:
         if (self.arucoPose is not None and self.aruco_corner_depth[0] != -1):
             # compute desired camera velocity
             self.curCamVel = self.computeCamVel()
-            # self.get_logger().info(f"Computed Cam velocity: {self.curCamVel}")
+            # print(np.round(self.curCamVel, 4))
 
             # camera velocity to end effector velocity
             # using adjoint transformation (Ad_eTc)
@@ -301,16 +302,20 @@ class IBVS_MJ:
 
                 # end effector velocity to joint velocity
                 # ee - jacobian
-                J_pos = np.zeros((3, self.model.nv))   # linear velocity Jacobian
-                J_rot = np.zeros((3, self.model.nv))   # angular velocity Jacobian
-                mujoco.mj_jacBody(self.model, self.data, J_pos, J_rot, self.ee_id)
-                jac = np.vstack([J_pos, J_rot])
-                q_dot = np.linalg.pinv(jac) @ np.array([0.3, 0.0, 0.0, 0.0, 0.0, 0.0])
-                # compute targe position
-                q_tar = self.integrateVel(self.data.qpos.copy(), q_dot)
+                damping: float = 1e-4
+                jac = np.zeros((6, self.model.nv))
+                diag = damping * np.eye(6)
+                mujoco.mj_jacSite(self.model, self.data, jac[:3], jac[3:], self.model.site('attachment_site').id)
+                dq = jac.T @ np.linalg.solve(jac @ jac.T + diag, self.ee_vel)
+                
+                q = self.data.qpos.copy()
+                mujoco.mj_integratePos(self.model, q, dq, 3)
 
                 # all control (target position)
-                self.data.ctrl[:] = self.q_home
+                if (np.all(self.ee_vel == 0.0)):
+                    self.data.ctrl[:] = self.q_home
+                else:
+                    self.data.ctrl[:] = q
 
                 # step sim
                 mujoco.mj_step(self.model, self.data)
