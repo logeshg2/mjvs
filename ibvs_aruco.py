@@ -20,6 +20,8 @@ class IBVS_MJ:
         self.ee_id = self.model.body('link7').id
         self.q_home = self.model.key("home").qpos
         self.rgbCamId =self.model.camera("camera_rgb").id
+        home_key_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_KEY, "home")
+        mujoco.mj_resetDataKeyframe(self.model, self.data, home_key_id)
         
         # default starting state
         self.dt = 1.0
